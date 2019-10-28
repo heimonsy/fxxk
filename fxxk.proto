@@ -9,7 +9,7 @@ option objc_class_prefix = "RPC";
 message Command {
 	enum Type {
 		PING = 0;
-		NEW_CONNECTION = 1;
+		NEW_TUNEL = 1;
 		CLOSE = 99;
 	}
 
@@ -17,8 +17,23 @@ message Command {
 }
 
 message ConnectRequest {
+	string client_id = 1;
+}
+
+message TunnelPackage {
+	string conn_id = 1;
+	bytes data = 2;
+}
+
+message TunnelRequest {
+	oneof req {
+		TunnelPackage data = 1;
+		string client_id = 2;
+	}
 }
 
 service Fxxk {
 	rpc Connect(ConnectRequest) returns (stream Command);
+
+	rpc ProxyTunel(stream TunnelRequest) returns (stream TunnelPackage);
 }

@@ -27,21 +27,21 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 type Command_Type int32
 
 const (
-	Command_PING           Command_Type = 0
-	Command_NEW_CONNECTION Command_Type = 1
-	Command_CLOSE          Command_Type = 99
+	Command_PING      Command_Type = 0
+	Command_NEW_TUNEL Command_Type = 1
+	Command_CLOSE     Command_Type = 99
 )
 
 var Command_Type_name = map[int32]string{
 	0:  "PING",
-	1:  "NEW_CONNECTION",
+	1:  "NEW_TUNEL",
 	99: "CLOSE",
 }
 
 var Command_Type_value = map[string]int32{
-	"PING":           0,
-	"NEW_CONNECTION": 1,
-	"CLOSE":          99,
+	"PING":      0,
+	"NEW_TUNEL": 1,
+	"CLOSE":     99,
 }
 
 func (x Command_Type) String() string {
@@ -92,6 +92,7 @@ func (m *Command) GetType() Command_Type {
 }
 
 type ConnectRequest struct {
+	ClientId             string   `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -122,30 +123,174 @@ func (m *ConnectRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ConnectRequest proto.InternalMessageInfo
 
+func (m *ConnectRequest) GetClientId() string {
+	if m != nil {
+		return m.ClientId
+	}
+	return ""
+}
+
+type TunnelPackage struct {
+	ConnId               string   `protobuf:"bytes,1,opt,name=conn_id,json=connId,proto3" json:"conn_id,omitempty"`
+	Data                 []byte   `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *TunnelPackage) Reset()         { *m = TunnelPackage{} }
+func (m *TunnelPackage) String() string { return proto.CompactTextString(m) }
+func (*TunnelPackage) ProtoMessage()    {}
+func (*TunnelPackage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_900b8d357a079f0a, []int{2}
+}
+
+func (m *TunnelPackage) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TunnelPackage.Unmarshal(m, b)
+}
+func (m *TunnelPackage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TunnelPackage.Marshal(b, m, deterministic)
+}
+func (m *TunnelPackage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TunnelPackage.Merge(m, src)
+}
+func (m *TunnelPackage) XXX_Size() int {
+	return xxx_messageInfo_TunnelPackage.Size(m)
+}
+func (m *TunnelPackage) XXX_DiscardUnknown() {
+	xxx_messageInfo_TunnelPackage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TunnelPackage proto.InternalMessageInfo
+
+func (m *TunnelPackage) GetConnId() string {
+	if m != nil {
+		return m.ConnId
+	}
+	return ""
+}
+
+func (m *TunnelPackage) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+type TunnelRequest struct {
+	// Types that are valid to be assigned to Req:
+	//	*TunnelRequest_Data
+	//	*TunnelRequest_ClientId
+	Req                  isTunnelRequest_Req `protobuf_oneof:"req"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
+}
+
+func (m *TunnelRequest) Reset()         { *m = TunnelRequest{} }
+func (m *TunnelRequest) String() string { return proto.CompactTextString(m) }
+func (*TunnelRequest) ProtoMessage()    {}
+func (*TunnelRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_900b8d357a079f0a, []int{3}
+}
+
+func (m *TunnelRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_TunnelRequest.Unmarshal(m, b)
+}
+func (m *TunnelRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_TunnelRequest.Marshal(b, m, deterministic)
+}
+func (m *TunnelRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TunnelRequest.Merge(m, src)
+}
+func (m *TunnelRequest) XXX_Size() int {
+	return xxx_messageInfo_TunnelRequest.Size(m)
+}
+func (m *TunnelRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_TunnelRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TunnelRequest proto.InternalMessageInfo
+
+type isTunnelRequest_Req interface {
+	isTunnelRequest_Req()
+}
+
+type TunnelRequest_Data struct {
+	Data *TunnelPackage `protobuf:"bytes,1,opt,name=data,proto3,oneof"`
+}
+
+type TunnelRequest_ClientId struct {
+	ClientId string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3,oneof"`
+}
+
+func (*TunnelRequest_Data) isTunnelRequest_Req() {}
+
+func (*TunnelRequest_ClientId) isTunnelRequest_Req() {}
+
+func (m *TunnelRequest) GetReq() isTunnelRequest_Req {
+	if m != nil {
+		return m.Req
+	}
+	return nil
+}
+
+func (m *TunnelRequest) GetData() *TunnelPackage {
+	if x, ok := m.GetReq().(*TunnelRequest_Data); ok {
+		return x.Data
+	}
+	return nil
+}
+
+func (m *TunnelRequest) GetClientId() string {
+	if x, ok := m.GetReq().(*TunnelRequest_ClientId); ok {
+		return x.ClientId
+	}
+	return ""
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*TunnelRequest) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*TunnelRequest_Data)(nil),
+		(*TunnelRequest_ClientId)(nil),
+	}
+}
+
 func init() {
 	proto.RegisterEnum("heimonsy.fxxk.Command_Type", Command_Type_name, Command_Type_value)
 	proto.RegisterType((*Command)(nil), "heimonsy.fxxk.Command")
 	proto.RegisterType((*ConnectRequest)(nil), "heimonsy.fxxk.ConnectRequest")
+	proto.RegisterType((*TunnelPackage)(nil), "heimonsy.fxxk.TunnelPackage")
+	proto.RegisterType((*TunnelRequest)(nil), "heimonsy.fxxk.TunnelRequest")
 }
 
 func init() { proto.RegisterFile("fxxk.proto", fileDescriptor_900b8d357a079f0a) }
 
 var fileDescriptor_900b8d357a079f0a = []byte{
-	// 215 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4a, 0xab, 0xa8, 0xc8,
-	0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0xcd, 0x48, 0xcd, 0xcc, 0xcd, 0xcf, 0x2b, 0xae,
-	0xd4, 0x03, 0x09, 0x2a, 0x65, 0x73, 0xb1, 0x3b, 0xe7, 0xe7, 0xe6, 0x26, 0xe6, 0xa5, 0x08, 0xe9,
-	0x73, 0xb1, 0x94, 0x54, 0x16, 0xa4, 0x4a, 0x30, 0x2a, 0x30, 0x6a, 0xf0, 0x19, 0x49, 0xeb, 0xa1,
-	0x28, 0xd4, 0x83, 0xaa, 0xd2, 0x0b, 0xa9, 0x2c, 0x48, 0x0d, 0x02, 0x2b, 0x54, 0xd2, 0xe7, 0x62,
-	0x01, 0xf1, 0x84, 0x38, 0xb8, 0x58, 0x02, 0x3c, 0xfd, 0xdc, 0x05, 0x18, 0x84, 0x84, 0xb8, 0xf8,
-	0xfc, 0x5c, 0xc3, 0xe3, 0x9d, 0xfd, 0xfd, 0xfc, 0x5c, 0x9d, 0x43, 0x3c, 0xfd, 0xfd, 0x04, 0x18,
-	0x85, 0x38, 0xb9, 0x58, 0x9d, 0x7d, 0xfc, 0x83, 0x5d, 0x05, 0x92, 0x95, 0x04, 0xb8, 0xf8, 0x9c,
-	0xf3, 0xf3, 0xf2, 0x52, 0x93, 0x4b, 0x82, 0x52, 0x0b, 0x4b, 0x53, 0x8b, 0x4b, 0x8c, 0xbc, 0xb8,
-	0x58, 0xdc, 0x2a, 0x2a, 0xb2, 0x85, 0x9c, 0x40, 0xce, 0x00, 0xcb, 0x08, 0xc9, 0x62, 0x58, 0x8c,
-	0xac, 0x43, 0x4a, 0x0c, 0xbb, 0xbb, 0x0c, 0x18, 0x9d, 0x94, 0x02, 0x18, 0xa3, 0x24, 0xd2, 0x33,
-	0x4b, 0x32, 0x4a, 0x93, 0xf4, 0x92, 0xf3, 0x73, 0xf5, 0x61, 0xea, 0xf4, 0x41, 0xea, 0x16, 0x31,
-	0x31, 0x07, 0x05, 0x38, 0x27, 0xb1, 0x81, 0x03, 0xc1, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x4a,
-	0x5b, 0xba, 0xc7, 0x12, 0x01, 0x00, 0x00,
+	// 342 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0x4f, 0x6b, 0xea, 0x40,
+	0x14, 0xc5, 0x1d, 0x8d, 0x7f, 0x72, 0xdf, 0x53, 0xe4, 0x2e, 0xde, 0x93, 0xe7, 0x13, 0x24, 0x2b,
+	0x29, 0x34, 0x4a, 0xba, 0xed, 0xca, 0x60, 0xab, 0x20, 0x36, 0xa4, 0x29, 0x85, 0x6e, 0x24, 0x26,
+	0xa3, 0x06, 0xcd, 0x8c, 0x7f, 0x26, 0x90, 0x7c, 0x93, 0xae, 0xfb, 0x49, 0xcb, 0x44, 0x83, 0xda,
+	0x4a, 0x77, 0x73, 0x2f, 0xbf, 0x7b, 0xef, 0x39, 0x87, 0x01, 0x98, 0xc7, 0xf1, 0x4a, 0xdf, 0xec,
+	0xb8, 0xe0, 0x58, 0x5d, 0xd2, 0x20, 0xe4, 0x6c, 0x9f, 0xe8, 0xb2, 0xa9, 0xcd, 0xa1, 0x6c, 0xf2,
+	0x30, 0x74, 0x99, 0x8f, 0x5d, 0x50, 0x44, 0xb2, 0xa1, 0x0d, 0xd2, 0x26, 0x9d, 0x9a, 0xd1, 0xd4,
+	0x2f, 0x40, 0xfd, 0x48, 0xe9, 0x4e, 0xb2, 0xa1, 0x76, 0x0a, 0x6a, 0x37, 0xa0, 0xc8, 0x0a, 0x2b,
+	0xa0, 0x58, 0xa3, 0xc9, 0x63, 0x3d, 0x87, 0x55, 0x50, 0x27, 0x83, 0xd7, 0xa9, 0xf3, 0x32, 0x19,
+	0x8c, 0xeb, 0x04, 0x55, 0x28, 0x9a, 0xe3, 0xa7, 0xe7, 0x41, 0xdd, 0xd3, 0x6e, 0xa1, 0x66, 0x72,
+	0xc6, 0xa8, 0x27, 0x6c, 0xba, 0x8d, 0xe8, 0x5e, 0x60, 0x13, 0x54, 0x6f, 0x1d, 0x50, 0x26, 0xa6,
+	0x81, 0x9f, 0xde, 0x54, 0xed, 0xca, 0xa1, 0x31, 0xf2, 0xb5, 0x7b, 0xa8, 0x3a, 0x11, 0x63, 0x74,
+	0x6d, 0xb9, 0xde, 0xca, 0x5d, 0x50, 0xfc, 0x0b, 0x65, 0x8f, 0x33, 0x76, 0x62, 0x4b, 0xb2, 0x1c,
+	0xf9, 0x88, 0xa0, 0xf8, 0xae, 0x70, 0x1b, 0xf9, 0x36, 0xe9, 0xfc, 0xb6, 0xd3, 0xb7, 0x16, 0x64,
+	0xd3, 0xd9, 0x2d, 0xe3, 0x08, 0xc9, 0xd1, 0x5f, 0xc6, 0xff, 0x2f, 0xd6, 0x2e, 0x2e, 0x0d, 0x73,
+	0x87, 0x25, 0xd8, 0x3a, 0xd7, 0x27, 0xb7, 0xab, 0xc3, 0xdc, 0x49, 0x61, 0xbf, 0x08, 0x85, 0x1d,
+	0xdd, 0x1a, 0xef, 0x04, 0x94, 0x87, 0x38, 0x5e, 0x61, 0x5f, 0x06, 0x99, 0x1a, 0xc4, 0xd6, 0xb7,
+	0xe8, 0xce, 0x8d, 0xff, 0xfb, 0x73, 0x3d, 0xd9, 0x1e, 0xc1, 0x31, 0x80, 0xb5, 0xe3, 0x71, 0xe2,
+	0x44, 0x8c, 0xae, 0xf1, 0xba, 0xcc, 0x6c, 0xcb, 0x8f, 0x26, 0x3a, 0xa4, 0x47, 0xfa, 0x9a, 0x45,
+	0xde, 0x1a, 0x8b, 0x40, 0x2c, 0xa3, 0x99, 0xee, 0xf1, 0xb0, 0x9b, 0xf1, 0x5d, 0xc9, 0x7f, 0xe4,
+	0x0b, 0xb6, 0x65, 0xce, 0x4a, 0xe9, 0xa7, 0xb8, 0xfb, 0x0c, 0x00, 0x00, 0xff, 0xff, 0x75, 0x17,
+	0x52, 0x32, 0x22, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -161,6 +306,7 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type FxxkClient interface {
 	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (Fxxk_ConnectClient, error)
+	ProxyTunel(ctx context.Context, opts ...grpc.CallOption) (Fxxk_ProxyTunelClient, error)
 }
 
 type fxxkClient struct {
@@ -203,9 +349,41 @@ func (x *fxxkConnectClient) Recv() (*Command, error) {
 	return m, nil
 }
 
+func (c *fxxkClient) ProxyTunel(ctx context.Context, opts ...grpc.CallOption) (Fxxk_ProxyTunelClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Fxxk_serviceDesc.Streams[1], "/heimonsy.fxxk.Fxxk/ProxyTunel", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &fxxkProxyTunelClient{stream}
+	return x, nil
+}
+
+type Fxxk_ProxyTunelClient interface {
+	Send(*TunnelRequest) error
+	Recv() (*TunnelPackage, error)
+	grpc.ClientStream
+}
+
+type fxxkProxyTunelClient struct {
+	grpc.ClientStream
+}
+
+func (x *fxxkProxyTunelClient) Send(m *TunnelRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *fxxkProxyTunelClient) Recv() (*TunnelPackage, error) {
+	m := new(TunnelPackage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // FxxkServer is the server API for Fxxk service.
 type FxxkServer interface {
 	Connect(*ConnectRequest, Fxxk_ConnectServer) error
+	ProxyTunel(Fxxk_ProxyTunelServer) error
 }
 
 // UnimplementedFxxkServer can be embedded to have forward compatible implementations.
@@ -214,6 +392,9 @@ type UnimplementedFxxkServer struct {
 
 func (*UnimplementedFxxkServer) Connect(req *ConnectRequest, srv Fxxk_ConnectServer) error {
 	return status.Errorf(codes.Unimplemented, "method Connect not implemented")
+}
+func (*UnimplementedFxxkServer) ProxyTunel(srv Fxxk_ProxyTunelServer) error {
+	return status.Errorf(codes.Unimplemented, "method ProxyTunel not implemented")
 }
 
 func RegisterFxxkServer(s *grpc.Server, srv FxxkServer) {
@@ -241,6 +422,32 @@ func (x *fxxkConnectServer) Send(m *Command) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Fxxk_ProxyTunel_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(FxxkServer).ProxyTunel(&fxxkProxyTunelServer{stream})
+}
+
+type Fxxk_ProxyTunelServer interface {
+	Send(*TunnelPackage) error
+	Recv() (*TunnelRequest, error)
+	grpc.ServerStream
+}
+
+type fxxkProxyTunelServer struct {
+	grpc.ServerStream
+}
+
+func (x *fxxkProxyTunelServer) Send(m *TunnelPackage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *fxxkProxyTunelServer) Recv() (*TunnelRequest, error) {
+	m := new(TunnelRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _Fxxk_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "heimonsy.fxxk.Fxxk",
 	HandlerType: (*FxxkServer)(nil),
@@ -250,6 +457,12 @@ var _Fxxk_serviceDesc = grpc.ServiceDesc{
 			StreamName:    "Connect",
 			Handler:       _Fxxk_Connect_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ProxyTunel",
+			Handler:       _Fxxk_ProxyTunel_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "fxxk.proto",
