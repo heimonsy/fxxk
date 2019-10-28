@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package heimonsy.fxxk;
+
+option go_package = "github.com/heimonsy/fxxk";
+option java_multiple_files = true;
+option objc_class_prefix = "RPC";
+
+message Command {
+	enum Type {
+		PING = 0;
+		NEW_CONNECTION = 1;
+		CLOSE = 99;
+	}
+
+	Type type = 1;
+}
+
+message ConnectRequest {
+}
+
+service Fxxk {
+	rpc Connect(ConnectRequest) returns (stream Command);
+}
