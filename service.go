@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	grpc "google.golang.org/grpc"
 )
@@ -31,7 +32,7 @@ func (s *Service) Register(gs *grpc.Server) {
 	RegisterFxxkServer(gs, s)
 }
 
-func (s *Service) getTunnel() (stream *tunnelStream) {
+func (s *Service) getTunnel() (stream *tunnelServerStream) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, c := range s.clients {
@@ -48,7 +49,7 @@ func (s *Service) acquireTunnel() (succeed bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, c := range s.clients {
-		if err := c.stream.Send(&Command{Type: Command_NEW_TUNEL}); err != nil {
+		if err := c.Send(&Command{Type: Command_NEW_TUNEL}); err != nil {
 			log.Printf("send command to client %s error: %s", c.id, err)
 			// TODO close client
 			continue
@@ -62,7 +63,7 @@ func (s *Service) acquireTunnel() (succeed bool) {
 	return
 }
 
-func (s *Service) newTunelOfClientID(clientID string, tunnel *tunnelStream) error {
+func (s *Service) newTunelOfClientID(clientID string, tunnel *tunnelServerStream) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	client, exists := s.clients[clientID]
@@ -79,7 +80,7 @@ func (s *Service) Connect(
 	req *ConnectRequest,
 	stream Fxxk_ConnectServer,
 ) error {
-	client := &connectClient{id: req.ClientId, done: make(chan struct{}), stream: stream}
+	client := newConnectClient(req.ClientId, stream)
 
 	s.mu.Lock()
 	if _, exists := s.clients[client.id]; exists {
@@ -89,8 +90,22 @@ func (s *Service) Connect(
 	s.clients[client.id] = client
 	s.mu.Unlock()
 
+	if err := client.Send(&Command{Type: Command_PING}); err != nil {
+		return err
+	}
+
 	<-client.done
 	return nil
+}
+
+func (s *Service) keepalive(client *connectClient) {
+	t := time.NewTicker(time.Second * 10)
+	for range t.C {
+		client.mu.Lock()
+		client.stream.Send(&Command{Type: Command_PING})
+		client.mu.Unlock()
+	}
+
 }
 
 func (s *Service) Tunel(
@@ -105,7 +120,7 @@ func (s *Service) Tunel(
 	if !ok {
 		return fmt.Errorf("need sent client id first")
 	}
-	ts := &tunnelStream{Fxxk_TunelServer: stream, done: make(chan struct{})}
+	ts := &tunnelServerStream{Fxxk_TunelServer: stream, done: make(chan struct{})}
 
 	if err := s.newTunelOfClientID(id.ClientId, ts); err != nil {
 		return err
@@ -131,7 +146,7 @@ func (s *Service) ProxyAndListen(addr string) {
 	}
 }
 
-func (s *Service) waitAndGetTunnel() (stream *tunnelStream) {
+func (s *Service) waitAndGetTunnel() (stream *tunnelServerStream) {
 	for {
 		stream := s.getTunnel()
 		if stream == nil && !s.acquireTunnel() {
@@ -145,15 +160,22 @@ func (s *Service) controls(conn net.Conn) {
 	stream := s.waitAndGetTunnel()
 	if stream == nil {
 		conn.Close()
-		fmt.Println("cant get tunnel for conn:", conn.RemoteAddr())
+		log.Println("cant get tunnel for conn:", conn.RemoteAddr())
 		return
 	}
+
+	// 与客户端约定发送一个空包，表示准备开始使用这个 stream
+	if err := stream.Send(&TunnelPackage{}); err != nil {
+		conn.Close()
+		log.Println("send empty package error", err)
+		return
+	}
+
 	done1 := make(chan struct{})
 	done2 := make(chan struct{})
-
 	rw := stream.ReadWriter()
-	s.atob(rw, conn, done1)
-	s.atob(conn, rw, done2)
+	atob(rw, conn, done1)
+	atob(conn, rw, done2)
 
 	select {
 	case <-done1:
@@ -163,7 +185,7 @@ func (s *Service) controls(conn net.Conn) {
 	conn.Close()
 }
 
-func (s *Service) atob(a io.Reader, b io.Writer, done chan struct{}) {
+func atob(a io.Reader, b io.Writer, done chan struct{}) {
 	defer func() {
 		close(done)
 	}()
@@ -173,7 +195,7 @@ func (s *Service) atob(a io.Reader, b io.Writer, done chan struct{}) {
 		var err error
 		n, err := a.Read(buf[:])
 		if err != nil {
-			fmt.Println("read conn error")
+			log.Println("read conn error")
 			return
 		}
 
@@ -181,7 +203,7 @@ func (s *Service) atob(a io.Reader, b io.Writer, done chan struct{}) {
 		for writed != n {
 			w, err := b.Write(buf[writed:n])
 			if err != nil {
-				fmt.Println("write conn error")
+				log.Println("write conn error")
 				return
 			}
 			writed += w

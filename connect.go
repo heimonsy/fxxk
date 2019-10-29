@@ -2,71 +2,45 @@ package fxxk
 
 import (
 	"bytes"
-	fmt "fmt"
 	"io"
+	"sync"
 )
 
 type connectClient struct {
 	id          string
 	done        chan struct{}
+	mu          *sync.Mutex
 	stream      Fxxk_ConnectServer
-	idleTunnels []*tunnelStream
+	idleTunnels []*tunnelServerStream
 }
 
-type tunnelStream struct {
+func newConnectClient(id string, stream Fxxk_ConnectServer) *connectClient {
+	return &connectClient{
+		id:     id,
+		stream: stream,
+		done:   make(chan struct{}),
+		mu:     &sync.Mutex{},
+	}
+}
+
+func (c *connectClient) Send(cmd *Command) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.stream.Send(cmd)
+}
+
+type tunnelServerStream struct {
 	Fxxk_TunelServer
 	done chan struct{}
 }
 
-func (ts *tunnelStream) Close() {
+func (ts *tunnelServerStream) Close() {
 	// TODO
 }
 
-func (ts *tunnelStream) ReadWriter() io.ReadWriter {
-	return &wrapTunnelStream{
-		Fxxk_TunelServer: ts.Fxxk_TunelServer,
-		buf:              bytes.NewBuffer(make([]byte, 0, 1024)),
+func (ts *tunnelServerStream) ReadWriter() io.ReadWriter {
+	return &wrapStreamIOReadWriter{
+		stream: &tunnelServer{stream: ts.Fxxk_TunelServer},
+		buf:    bytes.NewBuffer(make([]byte, 0, 1024)),
 	}
-}
-
-type wrapTunnelStream struct {
-	Fxxk_TunelServer
-	buf *bytes.Buffer
-}
-
-func (w *wrapTunnelStream) Read(p []byte) (n int, err error) {
-	if w.buf.Len() > 0 {
-		return w.buf.Read(p)
-	}
-
-	req, err := w.Recv()
-	if err != nil {
-		return
-	}
-	var data []byte
-	{
-		v, ok := req.Req.(*TunnelRequest_Data)
-		if !ok {
-			return 0, fmt.Errorf("invalid client request: expect data")
-		}
-		data = v.Data.Data
-	}
-
-	n = copy(p, data)
-	if len(data) > n {
-		w.buf.Reset()
-		w.buf.Write(data[n:])
-	}
-	return n, nil
-}
-
-func (w *wrapTunnelStream) Write(p []byte) (n int, err error) {
-	err = w.Send(&TunnelPackage{
-		Data: p,
-	})
-	if err != nil {
-		return
-	}
-
-	return len(p), nil
 }
