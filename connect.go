@@ -14,7 +14,7 @@ type connectClient struct {
 }
 
 type tunnelStream struct {
-	Fxxk_ProxyTunelServer
+	Fxxk_TunelServer
 	done chan struct{}
 }
 
@@ -24,13 +24,13 @@ func (ts *tunnelStream) Close() {
 
 func (ts *tunnelStream) ReadWriter() io.ReadWriter {
 	return &wrapTunnelStream{
-		Fxxk_ProxyTunelServer: ts.Fxxk_ProxyTunelServer,
-		buf:                   bytes.NewBuffer(make([]byte, 0, 1024)),
+		Fxxk_TunelServer: ts.Fxxk_TunelServer,
+		buf:              bytes.NewBuffer(make([]byte, 0, 1024)),
 	}
 }
 
 type wrapTunnelStream struct {
-	Fxxk_ProxyTunelServer
+	Fxxk_TunelServer
 	buf *bytes.Buffer
 }
 

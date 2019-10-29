@@ -12,7 +12,7 @@ import (
 
 // ConnectionHandler 处理进来的连接
 type ConnectionHandler interface {
-	HandleAndListen(addr string)
+	ProxyAndListen(addr string)
 }
 
 type Service struct {
@@ -93,8 +93,8 @@ func (s *Service) Connect(
 	return nil
 }
 
-func (s *Service) ProxyTunel(
-	stream Fxxk_ProxyTunelServer,
+func (s *Service) Tunel(
+	stream Fxxk_TunelServer,
 ) error {
 	req, err := stream.Recv()
 	if err != nil {
@@ -105,7 +105,7 @@ func (s *Service) ProxyTunel(
 	if !ok {
 		return fmt.Errorf("need sent client id first")
 	}
-	ts := &tunnelStream{Fxxk_ProxyTunelServer: stream, done: make(chan struct{})}
+	ts := &tunnelStream{Fxxk_TunelServer: stream, done: make(chan struct{})}
 
 	if err := s.newTunelOfClientID(id.ClientId, ts); err != nil {
 		return err
@@ -115,7 +115,7 @@ func (s *Service) ProxyTunel(
 	return nil
 }
 
-func (s *Service) HandleAndListen(addr string) {
+func (s *Service) ProxyAndListen(addr string) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		panic(err)
