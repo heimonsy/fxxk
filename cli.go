@@ -21,9 +21,10 @@ type Client struct {
 
 func NewClient(conn *grpc.ClientConn, targetAddr string) *Client {
 	return &Client{
-		cli:  NewFxxkClient(conn),
-		id:   xid.New().String(),
-		done: make(chan error, 1),
+		cli:        NewFxxkClient(conn),
+		id:         xid.New().String(),
+		done:       make(chan error, 1),
+		targetAddr: targetAddr,
 	}
 }
 
@@ -33,6 +34,10 @@ func (c *Client) Start(initTunnels int) error {
 		return err
 	}
 	go c.handleConnect(connectStream)
+
+	for i := 0; i < initTunnels; i++ {
+		go c.startNewTunnel()
+	}
 
 	return <-c.done
 }
@@ -72,11 +77,12 @@ func (c *Client) handleConnect(connectStream Fxxk_ConnectClient) {
 		switch cmd.Type {
 		case Command_PING:
 		case Command_NEW_TUNEL:
+			go c.startNewTunnel()
 		case Command_CLOSE:
 			c.close(connectStream.CloseSend())
 			return
 		default:
-			log.Println("unknow command:", cmd.Type)
+			log.Println("[client] unknow command:", cmd.Type)
 		}
 	}
 
@@ -105,14 +111,15 @@ func (c *Client) startNewTunnel() {
 		return
 	}
 	if len(v.Data) != 0 {
-		log.Printf("expect empty data from server")
+		log.Printf("[client] expect empty data from server")
 		stream.CloseSend()
 		return
 	}
+	log.Println("[client] tunnel activated")
 
 	conn, err := net.Dial("tcp", c.targetAddr)
 	if err != nil {
-		log.Printf("dial %s error: %v", c.targetAddr, err)
+		log.Printf("[client] dial %s error: %v", c.targetAddr, err)
 		stream.CloseSend()
 		return
 	}
@@ -120,8 +127,8 @@ func (c *Client) startNewTunnel() {
 	done1 := make(chan struct{})
 	done2 := make(chan struct{})
 	rw := newWrapStreamFromTunnelClient(stream)
-	atob(rw, conn, done1)
-	atob(conn, rw, done2)
+	go atob(rw, conn, done1)
+	go atob(conn, rw, done2)
 
 	select {
 	case <-done1:

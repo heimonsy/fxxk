@@ -35,7 +35,7 @@ type tunnelServerStream struct {
 }
 
 func (ts *tunnelServerStream) Close() {
-	// TODO
+	close(ts.done)
 }
 
 func (ts *tunnelServerStream) ReadWriter() io.ReadWriter {

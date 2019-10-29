@@ -25,7 +25,11 @@ type Service struct {
 
 // NewService
 func NewService() *Service {
-	return &Service{mu: &sync.Mutex{}, newTunelSig: sync.NewCond(&sync.Mutex{})}
+	return &Service{
+		mu:          &sync.Mutex{},
+		clients:     make(map[string]*connectClient),
+		newTunelSig: sync.NewCond(&sync.Mutex{}),
+	}
 }
 
 func (s *Service) Register(gs *grpc.Server) {
@@ -58,7 +62,7 @@ func (s *Service) acquireTunnel() (succeed bool) {
 	}
 
 	if !succeed {
-		log.Println("no clients")
+		log.Println("[server] no clients")
 	}
 	return
 }
@@ -72,7 +76,9 @@ func (s *Service) newTunelOfClientID(clientID string, tunnel *tunnelServerStream
 	}
 	client.idleTunnels = append(client.idleTunnels, tunnel)
 
+	s.newTunelSig.L.Lock()
 	s.newTunelSig.Signal()
+	s.newTunelSig.L.Unlock()
 	return nil
 }
 
@@ -89,6 +95,7 @@ func (s *Service) Connect(
 	}
 	s.clients[client.id] = client
 	s.mu.Unlock()
+	log.Println("[server] new client: ", client.id)
 
 	if err := client.Send(&Command{Type: Command_PING}); err != nil {
 		return err
@@ -125,6 +132,7 @@ func (s *Service) Tunel(
 	if err := s.newTunelOfClientID(id.ClientId, ts); err != nil {
 		return err
 	}
+	log.Println("[server] new tunnel from client:", id.ClientId)
 
 	<-ts.done
 	return nil
@@ -141,7 +149,7 @@ func (s *Service) ProxyAndListen(addr string) {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("new connection from handle:", tcpConn.RemoteAddr())
+		log.Println("[server]", tcpConn.RemoteAddr(), "new connection from handle")
 		go s.controls(tcpConn)
 	}
 }
@@ -149,10 +157,16 @@ func (s *Service) ProxyAndListen(addr string) {
 func (s *Service) waitAndGetTunnel() (stream *tunnelServerStream) {
 	for {
 		stream := s.getTunnel()
-		if stream == nil && !s.acquireTunnel() {
+		if stream != nil {
+			return stream
+		}
+
+		if !s.acquireTunnel() {
 			return nil
 		}
+		s.newTunelSig.L.Lock()
 		s.newTunelSig.Wait()
+		s.newTunelSig.L.Unlock()
 	}
 }
 
@@ -160,22 +174,23 @@ func (s *Service) controls(conn net.Conn) {
 	stream := s.waitAndGetTunnel()
 	if stream == nil {
 		conn.Close()
-		log.Println("cant get tunnel for conn:", conn.RemoteAddr())
+		log.Println("[server] cant get tunnel for conn:", conn.RemoteAddr())
 		return
 	}
 
 	// 与客户端约定发送一个空包，表示准备开始使用这个 stream
 	if err := stream.Send(&TunnelPackage{}); err != nil {
 		conn.Close()
-		log.Println("send empty package error", err)
+		log.Println("[server] send empty package error", err)
 		return
 	}
+	log.Println("[server]", conn.RemoteAddr(), "empty package sended")
 
 	done1 := make(chan struct{})
 	done2 := make(chan struct{})
 	rw := stream.ReadWriter()
-	atob(rw, conn, done1)
-	atob(conn, rw, done2)
+	go atob(rw, conn, done1)
+	go atob(conn, rw, done2)
 
 	select {
 	case <-done1:
@@ -195,7 +210,9 @@ func atob(a io.Reader, b io.Writer, done chan struct{}) {
 		var err error
 		n, err := a.Read(buf[:])
 		if err != nil {
-			log.Println("read conn error")
+			if err != io.EOF {
+				log.Println("read conn error", err)
+			}
 			return
 		}
 
@@ -203,7 +220,7 @@ func atob(a io.Reader, b io.Writer, done chan struct{}) {
 		for writed != n {
 			w, err := b.Write(buf[writed:n])
 			if err != nil {
-				log.Println("write conn error")
+				log.Println("write conn error", err)
 				return
 			}
 			writed += w
