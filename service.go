@@ -55,7 +55,7 @@ func (s *Service) acquireTunnel() (succeed bool) {
 	for _, c := range s.clients {
 		if err := c.Send(&Command{Type: Command_NEW_TUNEL}); err != nil {
 			log.Printf("send command to client %s error: %s", c.id, err)
-			// TODO close client
+			c.Close()
 			continue
 		}
 		succeed = true
@@ -101,16 +101,22 @@ func (s *Service) Connect(
 		return err
 	}
 
+	go s.keepalive(client)
 	<-client.done
+
+	s.mu.Lock()
+	delete(s.clients, client.id)
+	s.mu.Unlock()
 	return nil
 }
 
 func (s *Service) keepalive(client *connectClient) {
 	t := time.NewTicker(time.Second * 10)
 	for range t.C {
-		client.mu.Lock()
-		client.stream.Send(&Command{Type: Command_PING})
-		client.mu.Unlock()
+		if err := client.Send(&Command{Type: Command_PING}); err != nil {
+			client.Close()
+			break
+		}
 	}
 
 }
