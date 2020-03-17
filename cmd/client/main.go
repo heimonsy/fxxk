@@ -29,6 +29,7 @@ func main() {
 				log.Println("conn closed:", err)
 				<-time.After(time.Second * 3)
 			}
+			conn.Close()
 		}
 	}
 
